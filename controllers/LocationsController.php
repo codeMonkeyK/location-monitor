@@ -60,6 +60,7 @@ class LocationsController extends Controller
                 'cnt' => 0
             ];
 
+            // Check the log files
             foreach ($locations as $location):
                 $pieces = explode(":", $location->loc); // parse the string
                 $loc = [
@@ -74,11 +75,17 @@ class LocationsController extends Controller
                 array_push($ipLookup, $loc);
             endforeach;
 
+            // Check with geoip
+            if ($rtn['loc'] == "NOT FOUND") {
+                $geoip = new \lysenkobv\GeoIP\GeoIP();
+                $ip = $geoip->ip($model->ip);
+                $rtn['loc'] = $ip->country;
+            }
+
             // if successful, render entry-confirm
             return $this->render('entry-confirm', ['loc' => $rtn['loc'], 'cnt' => $rtn['cnt']]);
         } else {
             // either the page is initially displayed or there is some validation error
-            //Consider Refresh or Redirect to avoid resubmission
             return $this->render('entry', ['model' => $model]);
         }
     }

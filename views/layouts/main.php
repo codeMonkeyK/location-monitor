@@ -27,8 +27,8 @@ AppAsset::register($this);
 <div class="wrap">
     <?php
     NavBar::begin([
-        'brandLabel' => 'My Company',
-        'brandUrl' => Yii::$app->homeUrl,
+        'brandLabel' => 'etailinsights',
+        'brandUrl' => 'http://www.etailinsights.com/',
         'options' => [
             'class' => 'navbar-inverse navbar-fixed-top',
         ],
@@ -36,21 +36,10 @@ AppAsset::register($this);
     echo Nav::widget([
         'options' => ['class' => 'navbar-nav navbar-right'],
         'items' => [
-            ['label' => 'Home', 'url' => ['/site/index']],
-            ['label' => 'About', 'url' => ['/site/about']],
-            ['label' => 'Contact', 'url' => ['/site/contact']],
-            Yii::$app->user->isGuest ? (
-                ['label' => 'Login', 'url' => ['/site/login']]
-            ) : (
-                '<li>'
-                . Html::beginForm(['/site/logout'], 'post')
-                . Html::submitButton(
-                    'Logout (' . Yii::$app->user->identity->username . ')',
-                    ['class' => 'btn btn-link']
-                )
-                . Html::endForm()
-                . '</li>'
-            )
+            ['label' => 'Home', 'url' => ['/logs/lookup']],
+            ['label' => 'Log Data', 'url' => ['/logs/index']],
+            ['label' => 'Location Data', 'url' => ['/locations/index']],
+            ['label' => 'Check IP', 'url' => ['/locations/entry']],
         ],
     ]);
     NavBar::end();
