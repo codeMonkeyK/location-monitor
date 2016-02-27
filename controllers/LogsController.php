@@ -125,6 +125,17 @@ class LogsController extends Controller
                             if (!$statusFnd) {
                                 array_push($distinctLocations[$i]['status'], $curLogStatus[0]);
                             }
+                            // check to see if this IP has been reported
+                            $multiIpFnd = false;
+                            foreach ($loc['ips'] as $ip):
+                                if ($ip == $curLogIp) {
+                                    $multiIpFnd = true;
+                                    break;
+                                }
+                            endforeach;
+                            if (!$multiIpFnd) {
+                                array_push($distinctLocations[$i]['ips'], $curLogIp);
+                            }
                             break;
                         }
                         $i++;
@@ -133,7 +144,8 @@ class LogsController extends Controller
                         $obj = [
                             'loc' => $lookupLoc,
                             'cnt' => 1,
-                            'status' => $curLogStatus
+                            'status' => $curLogStatus,
+                            'ips' => [$curLogIp]
                         ];
                         array_push($distinctLocations, $obj);
                     }
@@ -160,6 +172,17 @@ class LogsController extends Controller
                         if (!$statusFnd) {
                             array_push($distinctLocations[$i]['status'], $curLogStatus[0]);
                         }
+                        // check to see if this IP has been reported
+                        $multiIpFnd = false;
+                        foreach ($loc['ips'] as $ip):
+                            if ($ip == $curLogIp) {
+                                $multiIpFnd = true;
+                                break;
+                            }
+                        endforeach;
+                        if (!$multiIpFnd) {
+                            array_push($distinctLocations[$i]['ips'], $curLogIp);
+                        }
                         break;
                     }
                     $i++;
@@ -168,7 +191,8 @@ class LogsController extends Controller
                     $obj = [
                         'loc' => "UNKNOWN",
                         'cnt' => 1,
-                        'status' => $curLogStatus
+                        'status' => $curLogStatus,
+                        'ips' => [$curLogIp]
                     ];
                     array_push($distinctLocations, $obj);
                 }

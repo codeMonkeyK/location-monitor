@@ -63,6 +63,18 @@
 				   	?>
 				   	<?php endforeach; ?>
 			   	</li>
+			   	<li><label>IP Addresses</label>:
+				   	<?php $j = 0 ?>
+				   	<?php foreach ($loc['ips'] as $ip): 
+				   		if ($j < sizeof($loc['ips']) - 1) {
+				   	?>		<?= Html::encode($ip) ?>,
+					<?php } else {?>
+				   			<?= Html::encode($ip) ?>
+				   	<?php } 
+				   		$j++;
+				   	?>
+				   	<?php endforeach; ?>
+			   	</li>
 		   	</ul>
 		   <?php $i++ ?>
 		<?php endforeach; ?>
