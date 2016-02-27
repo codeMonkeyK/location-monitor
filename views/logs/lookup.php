@@ -47,7 +47,7 @@
 <div class="row">
 
 	<div style="float:left">
-		<h3><u>Alphabetical Listing of Logged IP addresses</u></h3>
+		<h4><strong>Logged IP Addresses</strong></h4>
 
 		<ol>
 			<?php $i = 0 ?>
@@ -85,22 +85,23 @@
 	</div>
 
 	<div  style="float:right">
+		<br/>
 	    <?php
 	    	use scotthuangzl\googlechart\GoogleChart;
 
-	    	$myData = [];
+	    	$locationData = [];
 
 	    	$obj = ["location", "count"];
-	        array_push($myData, $obj);
+	        array_push($locationData, $obj);
 
 	    	foreach ($locs as $loc):
 	    		$obj = [$loc['loc'], $loc['cnt']];
-	            array_push($myData, $obj);
+	            array_push($locationData, $obj);
 	    	endforeach;
 
 	    	echo GoogleChart::widget(array('visualization' => 'PieChart',
-		        'data' => $myData,
-		        'options' => array('title' => 'Hits per Location')));
+		        'data' => $locationData,
+		        'options' => array('title' => 'Percent Hits per Location')));
 	    ?>
 	</div>
 </div>
