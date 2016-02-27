@@ -34,6 +34,8 @@ class LogsController extends Controller
     public function actionLookup()
     {
 
+        /*file_put_contents('php://stderr', print_r("Debugging\n", TRUE)); // debug to apache error log (sudo nano /var/log/apache2/error.log)*/
+
         $queryLogs = Logs::find(); // fectches all logs data
 
         $queryLocations = Locations::find(); // fectches all locations data
@@ -70,11 +72,7 @@ class LogsController extends Controller
         endforeach;
 
         // determine location for each ip and hits for distinct locations
-        $distinctLocations = [
-            'loc' => [],
-            'cnt' => [],
-            'status' => []
-        ];
+        $distinctLocations = [];
 
         foreach ($logInfo as $log):
             $curLogIp = $log['ip'];
@@ -112,30 +110,34 @@ class LogsController extends Controller
                     // check to see if this location already exists
                     $locFnd = false;
                     $i = 0;
-                    foreach ($distinctLocations['loc'] as $loc):
-                        if ($lookupLoc == $loc) {
+                    foreach ($distinctLocations as $loc):
+                        if ($lookupLoc == $loc['loc']) {
                             $locFnd = true;
-                            $distinctLocations['cnt'][$i]++;
+                            $distinctLocations[$i]['cnt']++;
                             // check to see if this status has been reported
                             $statusFnd = false;
-                            foreach ($distinctLocations['status'][$i] as $status):
+                            foreach ($loc['status'] as $status):
                                 if ($status == $curLogStatus[0]) {
                                     $statusFnd = true;
                                     break;
                                 }
                             endforeach;
                             if (!$statusFnd) {
-                                array_push($distinctLocations['status'][$i], $curLogStatus[0]);
+                                array_push($distinctLocations[$i]['status'], $curLogStatus[0]);
                             }
                             break;
                         }
                         $i++;
                     endforeach;
                     if (!$locFnd) {
-                        array_push($distinctLocations['loc'], $lookupLoc);
-                        array_push($distinctLocations['cnt'], 1);
-                        array_push($distinctLocations['status'], $curLogStatus);
+                        $obj = [
+                            'loc' => $lookupLoc,
+                            'cnt' => 1,
+                            'status' => $curLogStatus
+                        ];
+                        array_push($distinctLocations, $obj);
                     }
+                    break;
                 }
             endforeach;
             // if IP is not found, push into location = "UNKNOWN"
@@ -143,34 +145,42 @@ class LogsController extends Controller
                 // first check to see if we have an unknown category
                 $unknownFnd = false;
                 $i = 0;
-                foreach ($distinctLocations['loc'] as $loc):
-                    if ("UNKNOWN" == $loc) {
+                foreach ($distinctLocations as $loc):
+                    if ("UNKNOWN" == $loc['loc']) {
                         $unknownFnd = true;
-                        $distinctLocations['cnt'][$i]++;
+                        $distinctLocations[$i]['cnt']++;
                         // check to see if this status has been reported
                         $statusFnd = false;
-                        foreach ($distinctLocations['status'][$i] as $status):
+                        foreach ($loc['status'] as $status):
                             if ($status == $curLogStatus[0]) {
                                 $statusFnd = true;
                                 break;
                             }
                         endforeach;
                         if (!$statusFnd) {
-                            array_push($distinctLocations['status'][$i], $curLogStatus[0]);
+                            array_push($distinctLocations[$i]['status'], $curLogStatus[0]);
                         }
                         break;
                     }
                     $i++;
                 endforeach;
                 if (!$unknownFnd) {
-                    array_push($distinctLocations['loc'], "UNKNOWN");
-                    array_push($distinctLocations['cnt'], 1);
-                    array_push($distinctLocations['status'], $curLogStatus);
+                    $obj = [
+                        'loc' => "UNKNOWN",
+                        'cnt' => 1,
+                        'status' => $curLogStatus
+                    ];
+                    array_push($distinctLocations, $obj);
                 }
             }
         endforeach;
 
-        // render entry-confirm
-        return $this->render('lookup', ['locs' => $distinctLocations['loc'], 'cnts' => $distinctLocations['cnt'], 'status' => $distinctLocations['status'], 'tmpStatus' => $logInfo ]);
+        // Order by location
+        usort($distinctLocations, function($a, $b) {
+            return $a['loc'] > $b['loc'] ? 1 : -1; //Compare the location strings
+        });
+
+        // render lookup and pass distinctLocations
+        return $this->render('lookup', ['locs' => $distinctLocations]);
     }
 }
