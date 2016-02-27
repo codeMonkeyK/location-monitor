@@ -82,6 +82,42 @@
 			   <?php $i++ ?>
 			<?php endforeach; ?>
 		</ol>
+
+		<h4><strong>404 Errors</strong></h4>
+
+		<ol>
+			<?php $i = 0 ?>
+			<?php foreach ($invalidLocs as $loc): ?>
+			    <li><label> &nbsp IP location</label>: <?= Html::encode($loc['loc']) ?> - (count <?= Html::encode($loc['cnt']) ?>) &nbsp<span class="location-lbl glyphicon glyphicon-chevron-down" aria-hidden="true"> </span><span class="location-lbl glyphicon glyphicon-chevron-up" aria-hidden="true"> </span></li>
+		   		<ul class='bottom'>
+				   	<li><label>Status codes</label>:
+					   	<?php $j = 0 ?>
+					   	<?php foreach ($loc['status'] as $statusCode): 
+					   		if ($j < sizeof($loc['status']) - 1) {
+					   	?>		<?= Html::encode($statusCode) ?>,
+						<?php } else {?>
+					   			<?= Html::encode($statusCode) ?>
+					   	<?php } 
+					   		$j++;
+					   	?>
+					   	<?php endforeach; ?>
+				   	</li>
+				   	<li><label>IP Addresses</label>:
+					   	<?php $j = 0 ?>
+					   	<?php foreach ($loc['ips'] as $ip): 
+					   		if ($j < sizeof($loc['ips']) - 1) {
+					   	?>		<?= Html::encode($ip) ?>,
+						<?php } else {?>
+					   			<?= Html::encode($ip) ?>
+					   	<?php } 
+					   		$j++;
+					   	?>
+					   	<?php endforeach; ?>
+				   	</li>
+			   	</ul>
+			   <?php $i++ ?>
+			<?php endforeach; ?>
+		</ol>
 	</div>
 
 	<div  style="float:right">

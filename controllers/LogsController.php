@@ -74,45 +74,222 @@ class LogsController extends Controller
         // determine location for each ip and hits for distinct locations
         $distinctLocations = [];
 
+        // 404 error distinct locations
+        $distinctLocations404 = [];
+
         foreach ($logInfo as $log):
             $curLogIp = $log['ip'];
             $curLogLog = $log['log'];
             $curLogStatus = []; // add all status codes for each location
             array_push($curLogStatus, $log['status']);
-            // check if the IP is found
-            $ipFnd = false;
-            foreach ($ipLookup as $ipInfo):
-                $lookupIp = $ipInfo['ip'];
-                $lookupLoc = $ipInfo['loc'];
-                // check if there are any wildcards
-                $lookupIpPieces = explode("*", $lookupIp); // parse the string for wild cards
-                $wildcardNum = sizeof($lookupIpPieces);
-                $tmpCurLogIp = $curLogIp; // temporary curLogIp to test against
-                if ($wildcardNum > 1) { // if there is a wildcard
-                    // reset the matching criteria to the wildcard length
-                    $curLogIpPieces = explode(".", $curLogIp);
-                    // Compare to ipv4 length
-                    $ipv4 = 4;
-                    $i = $ipv4 - $wildcardNum;
-                    $tmpIp = "";
-                    $j = 0;
-                    while ($i-- >= 0) {
-                        $tmpIp .= $curLogIpPieces[$j++] . ".";
+            // Check if this is a 404 error or not
+            if ($curLogStatus[0] == '404') {
+                // check if the IP is found
+                $ipFnd = false;
+                foreach ($ipLookup as $ipInfo):
+                    $lookupIp = $ipInfo['ip'];
+                    $lookupLoc = $ipInfo['loc'];
+                    // check if there are any wildcards
+                    $lookupIpPieces = explode("*", $lookupIp); // parse the string for wild cards
+                    $wildcardNum = sizeof($lookupIpPieces);
+                    $tmpCurLogIp = $curLogIp; // temporary curLogIp to test against
+                    if ($wildcardNum > 1) { // if there is a wildcard
+                        // reset the matching criteria to the wildcard length
+                        $curLogIpPieces = explode(".", $curLogIp);
+                        // Compare to ipv4 length
+                        $ipv4 = 4;
+                        $i = $ipv4 - $wildcardNum;
+                        $tmpIp = "";
+                        $j = 0;
+                        while ($i-- >= 0) {
+                            $tmpIp .= $curLogIpPieces[$j++] . ".";
+                        }
+                        while (--$wildcardNum > 1) {
+                            $tmpIp .= "*.";
+                        }
+                        $tmpIp .= "*";
+                        $tmpCurLogIp = $tmpIp;
                     }
-                    while (--$wildcardNum > 1) {
-                        $tmpIp .= "*.";
+                    if ($tmpCurLogIp == $lookupIp) {
+                        $ipFnd = true;
+                        // check to see if this location already exists
+                        $locFnd = false;
+                        $i = 0;
+                        foreach ($distinctLocations404 as $loc):
+                            if ($lookupLoc == $loc['loc']) {
+                                $locFnd = true;
+                                $distinctLocations404[$i]['cnt']++;
+                                // check to see if this status has been reported
+                                $statusFnd = false;
+                                foreach ($loc['status'] as $status):
+                                    if ($status == $curLogStatus[0]) {
+                                        $statusFnd = true;
+                                        break;
+                                    }
+                                endforeach;
+                                if (!$statusFnd) {
+                                    array_push($distinctLocations404[$i]['status'], $curLogStatus[0]);
+                                }
+                                // check to see if this IP has been reported
+                                $multiIpFnd = false;
+                                foreach ($loc['ips'] as $ip):
+                                    if ($ip == $curLogIp) {
+                                        $multiIpFnd = true;
+                                        break;
+                                    }
+                                endforeach;
+                                if (!$multiIpFnd) {
+                                    array_push($distinctLocations404[$i]['ips'], $curLogIp);
+                                }
+                                break;
+                            }
+                            $i++;
+                        endforeach;
+                        if (!$locFnd) {
+                            $obj = [
+                                'loc' => $lookupLoc,
+                                'cnt' => 1,
+                                'status' => $curLogStatus,
+                                'ips' => [$curLogIp]
+                            ];
+                            array_push($distinctLocations404, $obj);
+                        }
+                        break;
                     }
-                    $tmpIp .= "*";
-                    $tmpCurLogIp = $tmpIp;
+                endforeach;
+                // if IP is not found, check geoip lookup
+                if (!$ipFnd) {  
+                    $geoip = new \lysenkobv\GeoIP\GeoIP();
+                    $ip = $geoip->ip($curLogIp);
+                    $lookupCountry = $ip->country;
+                    // first check to see if we have this country in our list
+                    $unknownFnd = false;
+                    $i = 0;
+                    foreach ($distinctLocations404 as $loc):
+                        if ($lookupCountry == $loc['loc']) {
+                            $unknownFnd = true;
+                            $distinctLocations404[$i]['cnt']++;
+                            // check to see if this status has been reported
+                            $statusFnd = false;
+                            foreach ($loc['status'] as $status):
+                                if ($status == $curLogStatus[0]) {
+                                    $statusFnd = true;
+                                    break;
+                                }
+                            endforeach;
+                            if (!$statusFnd) {
+                                array_push($distinctLocations404[$i]['status'], $curLogStatus[0]);
+                            }
+                            // check to see if this IP has been reported
+                            $multiIpFnd = false;
+                            foreach ($loc['ips'] as $ip):
+                                if ($ip == $curLogIp) {
+                                    $multiIpFnd = true;
+                                    break;
+                                }
+                            endforeach;
+                            if (!$multiIpFnd) {
+                                array_push($distinctLocations404[$i]['ips'], $curLogIp);
+                            }
+                            break;
+                        }
+                        $i++;
+                    endforeach;
+                    if (!$unknownFnd) {
+                        $obj = [
+                            'loc' => $lookupCountry,
+                            'cnt' => 1,
+                            'status' => $curLogStatus,
+                            'ips' => [$curLogIp]
+                        ];
+                        array_push($distinctLocations404, $obj);
+                    }
                 }
-                if ($tmpCurLogIp == $lookupIp) {
-                    $ipFnd = true;
-                    // check to see if this location already exists
-                    $locFnd = false;
+            } else {
+                // check if the IP is found
+                $ipFnd = false;
+                foreach ($ipLookup as $ipInfo):
+                    $lookupIp = $ipInfo['ip'];
+                    $lookupLoc = $ipInfo['loc'];
+                    // check if there are any wildcards
+                    $lookupIpPieces = explode("*", $lookupIp); // parse the string for wild cards
+                    $wildcardNum = sizeof($lookupIpPieces);
+                    $tmpCurLogIp = $curLogIp; // temporary curLogIp to test against
+                    if ($wildcardNum > 1) { // if there is a wildcard
+                        // reset the matching criteria to the wildcard length
+                        $curLogIpPieces = explode(".", $curLogIp);
+                        // Compare to ipv4 length
+                        $ipv4 = 4;
+                        $i = $ipv4 - $wildcardNum;
+                        $tmpIp = "";
+                        $j = 0;
+                        while ($i-- >= 0) {
+                            $tmpIp .= $curLogIpPieces[$j++] . ".";
+                        }
+                        while (--$wildcardNum > 1) {
+                            $tmpIp .= "*.";
+                        }
+                        $tmpIp .= "*";
+                        $tmpCurLogIp = $tmpIp;
+                    }
+                    if ($tmpCurLogIp == $lookupIp) {
+                        $ipFnd = true;
+                        // check to see if this location already exists
+                        $locFnd = false;
+                        $i = 0;
+                        foreach ($distinctLocations as $loc):
+                            if ($lookupLoc == $loc['loc']) {
+                                $locFnd = true;
+                                $distinctLocations[$i]['cnt']++;
+                                // check to see if this status has been reported
+                                $statusFnd = false;
+                                foreach ($loc['status'] as $status):
+                                    if ($status == $curLogStatus[0]) {
+                                        $statusFnd = true;
+                                        break;
+                                    }
+                                endforeach;
+                                if (!$statusFnd) {
+                                    array_push($distinctLocations[$i]['status'], $curLogStatus[0]);
+                                }
+                                // check to see if this IP has been reported
+                                $multiIpFnd = false;
+                                foreach ($loc['ips'] as $ip):
+                                    if ($ip == $curLogIp) {
+                                        $multiIpFnd = true;
+                                        break;
+                                    }
+                                endforeach;
+                                if (!$multiIpFnd) {
+                                    array_push($distinctLocations[$i]['ips'], $curLogIp);
+                                }
+                                break;
+                            }
+                            $i++;
+                        endforeach;
+                        if (!$locFnd) {
+                            $obj = [
+                                'loc' => $lookupLoc,
+                                'cnt' => 1,
+                                'status' => $curLogStatus,
+                                'ips' => [$curLogIp]
+                            ];
+                            array_push($distinctLocations, $obj);
+                        }
+                        break;
+                    }
+                endforeach;
+                // if IP is not found, check geoip lookup
+                if (!$ipFnd) {  
+                    $geoip = new \lysenkobv\GeoIP\GeoIP();
+                    $ip = $geoip->ip($curLogIp);
+                    $lookupCountry = $ip->country;
+                    // first check to see if we have this country in our list
+                    $unknownFnd = false;
                     $i = 0;
                     foreach ($distinctLocations as $loc):
-                        if ($lookupLoc == $loc['loc']) {
-                            $locFnd = true;
+                        if ($lookupCountry == $loc['loc']) {
+                            $unknownFnd = true;
                             $distinctLocations[$i]['cnt']++;
                             // check to see if this status has been reported
                             $statusFnd = false;
@@ -140,71 +317,30 @@ class LogsController extends Controller
                         }
                         $i++;
                     endforeach;
-                    if (!$locFnd) {
+                    if (!$unknownFnd) {
                         $obj = [
-                            'loc' => $lookupLoc,
+                            'loc' => $lookupCountry,
                             'cnt' => 1,
                             'status' => $curLogStatus,
                             'ips' => [$curLogIp]
                         ];
                         array_push($distinctLocations, $obj);
                     }
-                    break;
-                }
-            endforeach;
-            // if IP is not found, push into location = "UNKNOWN"
-            if (!$ipFnd) {    
-                // first check to see if we have an unknown category
-                $unknownFnd = false;
-                $i = 0;
-                foreach ($distinctLocations as $loc):
-                    if ("UNKNOWN" == $loc['loc']) {
-                        $unknownFnd = true;
-                        $distinctLocations[$i]['cnt']++;
-                        // check to see if this status has been reported
-                        $statusFnd = false;
-                        foreach ($loc['status'] as $status):
-                            if ($status == $curLogStatus[0]) {
-                                $statusFnd = true;
-                                break;
-                            }
-                        endforeach;
-                        if (!$statusFnd) {
-                            array_push($distinctLocations[$i]['status'], $curLogStatus[0]);
-                        }
-                        // check to see if this IP has been reported
-                        $multiIpFnd = false;
-                        foreach ($loc['ips'] as $ip):
-                            if ($ip == $curLogIp) {
-                                $multiIpFnd = true;
-                                break;
-                            }
-                        endforeach;
-                        if (!$multiIpFnd) {
-                            array_push($distinctLocations[$i]['ips'], $curLogIp);
-                        }
-                        break;
-                    }
-                    $i++;
-                endforeach;
-                if (!$unknownFnd) {
-                    $obj = [
-                        'loc' => "UNKNOWN",
-                        'cnt' => 1,
-                        'status' => $curLogStatus,
-                        'ips' => [$curLogIp]
-                    ];
-                    array_push($distinctLocations, $obj);
                 }
             }
         endforeach;
 
-        // Order by location
+        // Sort by location
         usort($distinctLocations, function($a, $b) {
             return $a['loc'] > $b['loc'] ? 1 : -1; //Compare the location strings
         });
 
+        // Sort by location
+        usort($distinctLocations404, function($a, $b) {
+            return $a['loc'] > $b['loc'] ? 1 : -1; //Compare the location strings
+        });
+
         // render lookup and pass distinctLocations
-        return $this->render('lookup', ['locs' => $distinctLocations]);
+        return $this->render('lookup', ['locs' => $distinctLocations, 'invalidLocs' => $distinctLocations404]);
     }
 }
